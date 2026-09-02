@@ -11,6 +11,14 @@ Navbot from lnx00 revamped and ported over to Verge. Major fixes and optimizatio
 - Utilizes TF2's native CNavArea::GetClosestPointOnArea and CNavArea::ComputeClosestPointInPortal functions to find best possible movement path
 - Mimics NextBot's native NextBotPlayer::PhysicsSimulate, which synthesizes a real CUserCMD to give authentic movement, and uses NextBotGroundLocomotion::ResolveCollision for projecting hit planes iteratively so that corners, walls, and ledges are an impossible issue(major issue in the original Navbot).
 
+
+<p align="left">
+  <a href="https://www.youtube.com/watch?v=tb07YfQSsnI">
+    <img src="[https://youtube.com](https://img.youtube.com/vi/tb07YfQSsnI/maxresdefault.jpg)" width="600" alt="Demonstration" />
+  </a>
+</p>
+
+
 ---
 
 ## How To Use
