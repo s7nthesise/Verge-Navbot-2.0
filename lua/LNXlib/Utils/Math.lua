@@ -1,0 +1,81 @@
+local Math = {}
+
+local M_RADPI = 180 / math.pi
+
+local function isNaN(x) return x ~= x end
+
+function Math.NormalizeAngle(angle)
+    angle = angle % 360
+    if angle > 180 then
+        angle = angle - 360
+    end
+
+    return angle
+end
+
+function Math.RemapValClamped(val, A, B, C, D)
+    if A == B then
+        return val >= B and D or C
+    end
+
+    local cVal = (val - A) / (B - A)
+    cVal = math.clamp(cVal, 0, 1)
+
+    return C + (D - C) * cVal
+end
+
+function Math.PositionAngles(source, dest)
+    local delta = source - dest
+
+    local pitch = math.atan(delta.z / delta:Length2D()) * M_RADPI
+    local yaw = math.atan(delta.y / delta.x) * M_RADPI
+
+    if delta.x >= 0 then
+        yaw = yaw + 180
+    end
+
+    if isNaN(pitch) then pitch = 0 end
+    if isNaN(yaw) then yaw = 0 end
+
+    return EulerAngles(pitch, yaw, 0)
+end
+
+function Math.AngleFov(vFrom, vTo)
+    local vSrc = vFrom:Forward()
+    local vDst = vTo:Forward()
+
+    local fov = math.deg(math.acos(vDst:Dot(vSrc) / vDst:LengthSqr()))
+    if isNaN(fov) then fov = 0 end
+
+    return fov
+end
+
+function Math.SolveProjectile(origin, dest, speed, gravity)
+    local _, sv_gravity = client.GetConVar("sv_gravity")
+    local v = dest - origin
+    local v0 = speed
+
+    local g = sv_gravity * gravity
+    if g == 0 then
+        local angles = Math.PositionAngles(origin, dest)
+        local time = v:Length() / v0
+        return { angles = angles, time = time }
+    else
+        local dx = v:Length2D()
+        local dy = v.z
+        local root = v0 * v0 * v0 * v0 - g * (g * dx * dx + 2 * dy * v0 * v0)
+        if root < 0 then return nil end
+
+        local pitch = math.atan((v0 * v0 - math.sqrt(root)) / (g * dx))
+        local yaw = math.atan(v.y, v.x)
+
+        if isNaN(pitch) or isNaN(yaw) then return nil end
+
+        local angles = EulerAngles(pitch * -M_RADPI, yaw * M_RADPI)
+        local time =  dx / (math.cos(pitch) * v0)
+        return { angles = angles, time = time }
+    end
+end
+
+
+return Math
