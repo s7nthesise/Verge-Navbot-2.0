@@ -11,19 +11,14 @@ Navbot from lnx00 revamped and ported over to Verge. Major fixes and optimizatio
 - Utilizes TF2's native CNavArea::GetClosestPointOnArea and CNavArea::ComputeClosestPointInPortal functions to find best possible movement path
 - Mimics NextBot's native NextBotPlayer::PhysicsSimulate, which synthesizes a real CUserCMD to give authentic movement, and uses NextBotGroundLocomotion::ResolveCollision for projecting hit planes iteratively so that corners, walls, and ledges are an impossible issue(major issue in the original Navbot).
 
-
-<p align="left">
-  <a href="https://www.youtube.com/watch?v=tb07YfQSsnI">
-    <img src="[https://youtube.com](https://img.youtube.com/vi/tb07YfQSsnI/maxresdefault.jpg)" width="600" alt="Demonstration" />
-  </a>
-</p>
-
+## Demonstration Video
+[![Demonstration](https://img.youtube.com/vi/tb07YfQSsnI/hqdefault.jpg)](https://www.youtube.com/watch?v=tb07YfQSsnI)
 
 ---
 
 ## How To Use
 > **Note: LNXlib, Navbot, and ImMenu are automatically shipped with Verge upon injection, but the open source is here if you need it or want to make requests/bug reports**
-1. Download the latest release:
+1. Download the latest release: https://github.com/s7nthesise/Verge-Navbot-2.0/releases/tag/1.0
 2. Drop lua folder into "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\Verge\"
 3. **[Optional]** Drag AutoExecNavbot.lua into "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\Verge\lua\autoexec" **if** you want Navbot to auto execute when injecting Verge
 4. Start TF2
