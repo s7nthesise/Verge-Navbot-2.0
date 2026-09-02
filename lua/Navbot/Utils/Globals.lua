@@ -44,6 +44,11 @@ G.World_Default = {
     payloads = {},
     flags = {},
     goalPos = nil,
+    ownFlagHome = nil,
+    enemyFlagHome = nil,
+    bFlagDirty = true,
+    flagScanTick = 0,
+    bTouchObjective = false,
     lockedPoints = {},
     cpOwner = {},
 }

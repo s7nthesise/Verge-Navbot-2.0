@@ -35,8 +35,8 @@ local function findOwnCart(pLocal)
     return fallback
 end
 
-local function smoothViewAngles(userCmd, targetAngles)
-    local currentAngles = userCmd.viewangles
+local function smoothViewAngles(targetAngles)
+    local currentAngles = engine.GetViewAngles()
     local deltaAngles = { x = targetAngles.x - currentAngles.x, y = targetAngles.y - currentAngles.y }
     deltaAngles.y = ((deltaAngles.y + 180) % 360) - 180
 
@@ -57,7 +57,7 @@ local function getViewAnglesToNode(pLocalWrapped, targetPos)
 end
 
 -- face the move target, not the node center (avoids oscillation)
-local function handlePathWalkingView(userCmd, targetPos)
+local function handlePathWalkingView(targetPos)
     if not (targetPos and G.Menu.Movement.lookatpath) then
         return
     end
@@ -73,7 +73,7 @@ local function handlePathWalkingView(userCmd, targetPos)
 
     angles.x = 0
     if G.Menu.Movement.smoothLookAtPath then
-        angles = smoothViewAngles(userCmd, angles)
+        angles = smoothViewAngles(angles)
     end
     engine.SetViewAngles(angles)
 end
@@ -125,7 +125,7 @@ local function attemptJumpIfStuck(userCmd)
     local now = globals.CurTime()
     -- once started, run the sequence to completion
     if not cjState then
-        if (G.Navigation.stillTicks or 0) <= 66 then
+        if (G.Navigation.stillTicks or 0) <= 12 then
             return
         end
         cjState = "jump"
@@ -139,7 +139,7 @@ local function attemptJumpIfStuck(userCmd)
         end
     elseif cjState == "crouch" then
         userCmd:SetButtons(userCmd.buttons | IN_DUCK)
-        if now - cjStart >= 0.75 then
+        if now - cjStart >= 0.4 then
             cjState = nil
         end
     end
@@ -216,7 +216,7 @@ local function OnCreateMove(userCmd)
             if cart then G.World.goalPos = cart:GetAbsOrigin() end
         end
         local goalDist = (G.pLocal.Origin - G.World.goalPos):Length()
-        if goalDist <= 115 then
+        if goalDist <= (G.World.bTouchObjective and 30 or 115) then
             G.Navigation.stillTicks = 0
             G.Navigation.stillStartPos = nil
             if WorkManager.attemptWork(100, "recheck") then
@@ -225,11 +225,30 @@ local function OnCreateMove(userCmd)
             Navigation.ClearPath()
             return
         end
+        if G.World.bTouchObjective and goalDist < 200 then
+            local lastP = G.Navigation.stillStartPos
+            if lastP then
+                if (G.pLocal.Origin - lastP):Length() > STUCK_MOVE_EPS then
+                    G.Navigation.stillTicks = 0
+                    G.Navigation.stillStartPos = G.pLocal.Origin
+                end
+            else
+                G.Navigation.stillStartPos = G.pLocal.Origin
+            end
+            G.Navigation.stillTicks = (G.Navigation.stillTicks or 0) + 1
+            attemptJumpIfStuck(userCmd)
+            if G.Menu.Main.Walking then
+                handlePathWalkingView(G.World.goalPos)
+                Common.WalkTo(userCmd, pLocal, G.World.goalPos)
+            end
+            Navigation.ClearPath()
+            return
+        end
         local tr = engine.TraceLine(G.pLocal.Origin + Vector3(0, 0, 55), G.World.goalPos + Vector3(0, 0, 45), MASK_PLAYERSOLID_BRUSHONLY)
         if tr and tr.fraction >= 1.0 then
             Navigation.ClearPath()
             if G.Menu.Main.Walking then
-                handlePathWalkingView(userCmd, G.World.goalPos)
+                handlePathWalkingView(G.World.goalPos)
                 Common.WalkTo(userCmd, pLocal, G.World.goalPos)
             end
             G.Navigation.stillTicks = 0
@@ -277,7 +296,7 @@ local function OnCreateMove(userCmd)
             movePos = Common.AvoidSteer(LocalOrigin, nodePos)
         end
         if not bDropNudge then
-            handlePathWalkingView(userCmd, movePos)
+            handlePathWalkingView(movePos)
         end
         if G.Menu.Main.Walking then
             Common.WalkTo(userCmd, pLocal, movePos)
@@ -285,7 +304,7 @@ local function OnCreateMove(userCmd)
 
         if shouldMoveToNextNode(dist2D, verticalDist, LocalOrigin, nodePos) then
             if currentTask == "Objective" and #G.Navigation.path <= 1
-               and G.World.goalPos and (G.pLocal.Origin - G.World.goalPos):Length() <= 150 then
+               and G.World.goalPos and (G.pLocal.Origin - G.World.goalPos):Length() <= (G.World.bTouchObjective and 30 or 150) then
                 G.Navigation.stillTicks = 0
                 G.Navigation.stillStartPos = nil
                 return
@@ -345,7 +364,24 @@ local function OnCreateMove(userCmd)
         -- remember the stuck edge/node so re-pathing avoids it
         attemptJumpIfStuck(userCmd)
         if WorkManager.attemptWork(5, "stuckcheck") then
-            if (G.Navigation.stillTicks or 0) > 120 then
+            if (G.Navigation.stillTicks or 0) > 60 then
+                -- a living enemy close by is body-blocking, not a bad nav mesh
+                local myTeam = pLocal:GetTeamNumber()
+                local bPlayerBlock = false
+                for _, ent in pairs(entities.FindByClass("CTFPlayer") or {}) do
+                    if ent and ent:IsValid() and ent:IsAlive() and ent:GetTeamNumber() ~= myTeam then
+                        local ep = ent:GetAbsOrigin()
+                        if ep and (ep - LocalOrigin):Length() < 60 then
+                            bPlayerBlock = true
+                            break
+                        end
+                    end
+                end
+                if bPlayerBlock then
+                    G.Navigation.stillTicks = 0
+                    G.Navigation.stillStartPos = nil
+                    return
+                end
                 local path = G.Navigation.path
                 if path and #path >= 2 then
                     local a, b = path[#path], path[#path - 1]
@@ -402,14 +438,49 @@ local function OnCreateMove(userCmd)
         end
 
         local function findFlagGoal()
-            local myItem = pLocal:GetPropInt("m_hItem")
-            G.World.flags = entities.FindByClass("CCaptureFlag")
+            local myTeam = pLocal:GetTeamNumber()
+            local tick = globals.TickCount()
+            if G.World.bFlagDirty or (tick - (G.World.flagScanTick or 0)) > 15 then
+                G.World.flagScanTick = tick
+                G.World.flags = entities.FindByClass("CCaptureFlag")
+            end
+            G.World.bFlagDirty = false
+
+            local carried = pLocal:GetPropEntity("m_hItem")
+            local hasFlag = carried ~= nil and carried:IsValid()
+
+            local ownHome, enemyHome = G.World.ownFlagHome, G.World.enemyFlagHome
+            local grabbable = false
             for _, entity in pairs(G.World.flags or {}) do
-                local myTeam = entity:GetTeamNumber() == pLocal:GetTeamNumber()
-                if (myItem > 0 and myTeam) or (myItem <= 0 and not myTeam) then
-                    return Node.GetClosest(entity:GetAbsOrigin())
+                if entity and entity:IsValid() then
+                    local pos = entity:GetAbsOrigin()
+                    local status = entity:GetPropInt("m_nFlagStatus")
+                    if entity:GetTeamNumber() == myTeam then
+                        if status == 0 then ownHome = pos end
+                    elseif status ~= 1 then
+                        enemyHome = pos
+                        grabbable = true
+                    end
                 end
             end
+            G.World.ownFlagHome, G.World.enemyFlagHome = ownHome, enemyHome
+
+            if hasFlag and ownHome then
+                G.World.bTouchObjective = true
+                G.World.goalPos = ownHome
+                return Node.GetClosest(ownHome)
+            end
+            if not hasFlag and grabbable then
+                G.World.bTouchObjective = true
+                G.World.goalPos = enemyHome
+                return Node.GetClosest(enemyHome)
+            end
+            G.World.bTouchObjective = true
+            if not hasFlag and enemyHome then
+                G.World.goalPos = enemyHome
+                return Node.GetClosest(enemyHome)
+            end
+            return nil
         end
 
         local function findControlPointGoal()

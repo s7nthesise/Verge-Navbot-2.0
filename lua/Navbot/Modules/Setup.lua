@@ -168,6 +168,10 @@ local function OnGameEvent(event)
         SetupModule.SetupNavigation()
 
         Navigation.ClearPath()
+        G.World.ownFlagHome = nil
+        G.World.enemyFlagHome = nil
+        G.World.bFlagDirty = true
+        G.World.bTouchObjective = false
     elseif eventName == "round_start" then
         Navigation.ClearPath()
         Navigation.ResetTickTimer()
@@ -185,6 +189,8 @@ local function OnGameEvent(event)
         G.World.lockedPoints[event:GetInt("cp")] = true
     elseif eventName == "teamplay_point_unlocked" then
         G.World.lockedPoints[event:GetInt("cp")] = nil
+    elseif eventName == "ctf_flag_captured" or eventName == "teamplay_flag_event" or eventName == "flagstatus_update" then
+        G.World.bFlagDirty = true
     elseif eventName == "player_spawn" or eventName == "player_death" then
         -- reset navigation on local spawn/death (more reliable than the CreateMove check)
         local idx = engine.GetPlayerForUserID(event:GetInt("userid"))
