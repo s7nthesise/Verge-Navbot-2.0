@@ -14,8 +14,9 @@ Navbot from lnx00 revamped and ported over to Verge. Major fixes and optimizatio
 ---
 
 ## How To Use
+> **Note: LNXlib, Navbot, and ImMenu are automatically shipped with Verge upon injection, but the open source is here if you need it or want to make requests/bug reports**
 1. Download the latest release:
-2. Drop Navbot **and** LNXlib folders into "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\Verge\lua\"
+2. Drop lua folder into "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\Verge\"
 3. **[Optional]** Drag AutoExecNavbot.lua into "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\Verge\lua\autoexec" **if** you want Navbot to auto execute when injecting Verge
 4. Start TF2
 5. Open Verge menu(INSERT) -> Lua -> navigate to "Navbot\init.lua" -> click load icon(or right click script -> Load)
