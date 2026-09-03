@@ -1,4 +1,5 @@
 # Verge-Navbot-2.0
+[Get VergeTF](https://vergetf.pro/)
 
 ---
 
